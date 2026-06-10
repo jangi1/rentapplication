@@ -21,43 +21,45 @@ class FavoritesScreen extends StatelessWidget {
         title: const Text('Saved Apartments', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: StreamBuilder<List<String>>(
-        stream: db.getFavoriteApartmentIds(user!.uid),
-        builder: (context, favSnapshot) {
-          if (favSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
-          final favIds = favSnapshot.data ?? [];
-          if (favIds.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          return StreamBuilder<List<ApartmentModel>>(
-            stream: db.getApartments(),
-            builder: (context, aptSnapshot) {
-              if (aptSnapshot.connectionState == ConnectionState.waiting) {
+      body: user == null 
+        ? const Center(child: Text('Please log in to see your favorites'))
+        : StreamBuilder<List<String>>(
+            stream: db.getFavoriteApartmentIds(user.uid),
+            builder: (context, favSnapshot) {
+              if (favSnapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
               
-              final apartments = aptSnapshot.data?.where((apt) => favIds.contains(apt.id)).toList() ?? [];
-              
-              if (apartments.isEmpty) {
+              final favIds = favSnapshot.data ?? [];
+              if (favIds.isEmpty) {
                 return _buildEmptyState();
               }
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: apartments.length,
-                itemBuilder: (context, index) {
-                  final apt = apartments[index];
-                  return _buildFavoriteCard(context, apt);
+              return StreamBuilder<List<ApartmentModel>>(
+                stream: db.getApartments(),
+                builder: (context, aptSnapshot) {
+                  if (aptSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  final apartments = aptSnapshot.data?.where((apt) => favIds.contains(apt.id)).toList() ?? [];
+                  
+                  if (apartments.isEmpty) {
+                    return _buildEmptyState();
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: apartments.length,
+                    itemBuilder: (context, index) {
+                      final apt = apartments[index];
+                      return _buildFavoriteCard(context, apt);
+                    },
+                  );
                 },
               );
             },
-          );
-        },
-      ),
+          ),
     );
   }
 
@@ -85,7 +87,7 @@ class FavoritesScreen extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5)),
           ],
         ),
         child: Column(
@@ -114,7 +116,13 @@ class FavoritesScreen extends StatelessWidget {
                     children: [
                       const Icon(Icons.location_on, size: 14, color: Colors.grey),
                       const SizedBox(width: 5),
-                      Text(apt.location, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      Expanded(
+                        child: Text(
+                          apt.location.toString(), 
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),

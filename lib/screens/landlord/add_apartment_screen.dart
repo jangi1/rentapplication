@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../models/apartment_model.dart';
+import '../../models/location_model.dart';
 import '../../providers/user_provider.dart';
 import '../../services/database_service.dart';
 
 class AddApartmentScreen extends StatefulWidget {
-  const AddApartmentScreen({super.key});
+  final VoidCallback? onSuccess;
+  const AddApartmentScreen({super.key, this.onSuccess});
 
   @override
   State<AddApartmentScreen> createState() => _AddApartmentScreenState();
@@ -16,16 +18,25 @@ class AddApartmentScreen extends StatefulWidget {
 class _AddApartmentScreenState extends State<AddApartmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _propertyTypeController = TextEditingController(text: 'Apartment');
   final _bedroomsController = TextEditingController();
   final _bathroomsController = TextEditingController();
   final _floorAreaController = TextEditingController();
-  final _propertyTypeController = TextEditingController(text: 'Apartment');
-  final _contactController = TextEditingController();
   
-  String _availability = 'Available';
+  // Location Controllers
+  final _provinceController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _barangayController = TextEditingController();
+  final _streetController = TextEditingController();
+  final _landmarkController = TextEditingController();
+
+  final String _availability = 'Available';
+  bool _isFurnished = false;
+  bool _hasParking = false;
+  bool _isPetFriendly = false;
+
   final List<String> _selectedAmenities = [];
   final List<String> _amenityOptions = [
     'Wi-Fi', 'Parking', 'Air Conditioning', 'Balcony', 
@@ -46,7 +57,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   void _saveApartment() async {
-    if (_formKey.currentState!.validate() && _images.isNotEmpty) {
+    if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       final user = Provider.of<UserProvider>(context, listen: false).user;
       
@@ -54,18 +65,27 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         id: '',
         landlordId: user!.uid,
         title: _titleController.text.trim(),
-        location: _locationController.text.trim(),
-        price: double.parse(_priceController.text.trim()),
         description: _descriptionController.text.trim(),
+        price: double.parse(_priceController.text.trim()),
+        propertyType: _propertyTypeController.text.trim(),
         bedrooms: int.parse(_bedroomsController.text.trim()),
         bathrooms: int.parse(_bathroomsController.text.trim()),
         floorArea: double.parse(_floorAreaController.text.trim()),
-        propertyType: _propertyTypeController.text.trim(),
         amenities: _selectedAmenities,
-        contactNumber: user.contactNumber, // Using landlord's registered contact
         imageUrls: [],
         status: _availability,
         createdAt: DateTime.now(),
+        location: LocationModel(
+          province: _provinceController.text.trim(),
+          cityMunicipality: _cityController.text.trim(),
+          barangay: _barangayController.text.trim(),
+          streetAddress: _streetController.text.trim().isEmpty ? null : _streetController.text.trim(),
+          landmark: _landmarkController.text.trim().isEmpty ? null : _landmarkController.text.trim(),
+        ),
+        isFurnished: _isFurnished,
+        hasParking: _hasParking,
+        isPetFriendly: _isPetFriendly,
+        contactNumber: user.contactNumber,
       );
 
       await DatabaseService().addApartment(newApt, _images);
@@ -73,10 +93,28 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing published successfully!')));
-        Navigator.pop(context);
+        if (widget.onSuccess != null) {
+          widget.onSuccess!();
+          // Reset form
+          _titleController.clear();
+          _descriptionController.clear();
+          _priceController.clear();
+          _bedroomsController.clear();
+          _bathroomsController.clear();
+          _floorAreaController.clear();
+          _provinceController.clear();
+          _cityController.clear();
+          _barangayController.clear();
+          _streetController.clear();
+          _landmarkController.clear();
+          setState(() {
+            _images = [];
+            _selectedAmenities.clear();
+          });
+        } else {
+          Navigator.pop(context);
+        }
       }
-    } else if (_images.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please upload at least one photo')));
     }
   }
 
@@ -87,7 +125,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
+        leading: widget.onSuccess != null ? null : IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
@@ -103,137 +141,90 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildFormRow(Icons.sell_outlined, 'Title', _titleController, '2BR Apartment in Ecoland, Davao City'),
-                  _buildFormRow(Icons.payments_outlined, 'Price (per month)', _priceController, '12000', keyboardType: TextInputType.number),
-                  _buildFormRow(Icons.location_on_outlined, 'Location', _locationController, 'Ecoland, Davao City'),
+                  _buildSectionHeader(Icons.info_outline, 'Basic Details'),
+                  _buildTextField(_titleController, 'Title', '2BR Apartment in Ecoland'),
+                  _buildTextField(_priceController, 'Monthly Rent', '12000', keyboardType: TextInputType.number),
+                  _buildTextField(_descriptionController, 'Description', 'Describe your property...', maxLines: 3),
                   
-                  _buildSectionHeader(Icons.description_outlined, 'Description'),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 40, bottom: 20),
-                    child: TextFormField(
-                      controller: _descriptionController,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Describe your apartment...',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-                      ),
-                    ),
-                  ),
-
+                  _buildSectionHeader(Icons.location_on_outlined, 'Location'),
+                  _buildTextField(_provinceController, 'Province', 'Davao del Sur'),
+                  _buildTextField(_cityController, 'City/Municipality', 'Davao City'),
+                  _buildTextField(_barangayController, 'Barangay', 'Ecoland'),
+                  _buildTextField(_streetController, 'Street Address (Optional)', 'Street name, House #'),
+                  
+                  _buildSectionHeader(Icons.home_work_outlined, 'Property Specs'),
                   Row(
                     children: [
-                      Expanded(child: _buildFormRow(Icons.bed_outlined, 'Bedrooms', _bedroomsController, '2', keyboardType: TextInputType.number)),
+                      Expanded(child: _buildTextField(_bedroomsController, 'Bedrooms', '2', keyboardType: TextInputType.number)),
                       const SizedBox(width: 10),
-                      Expanded(child: _buildFormRow(Icons.bathtub_outlined, 'Bathrooms', _bathroomsController, '1', keyboardType: TextInputType.number)),
+                      Expanded(child: _buildTextField(_bathroomsController, 'Bathrooms', '1', keyboardType: TextInputType.number)),
                     ],
                   ),
+                  _buildTextField(_floorAreaController, 'Floor Area (sqm)', '60', keyboardType: TextInputType.number),
+                  _buildTextField(_propertyTypeController, 'Property Type', 'Apartment'),
 
-                  _buildFormRow(Icons.square_foot_outlined, 'Floor Area (sqm)', _floorAreaController, '68', keyboardType: TextInputType.number),
-                  _buildFormRow(Icons.home_work_outlined, 'Property Type', _propertyTypeController, 'Apartment'),
-
-                  _buildSectionHeader(Icons.calendar_today_outlined, 'Availability'),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 40, bottom: 20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _availability,
-                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                  _buildSectionHeader(Icons.featured_play_list_outlined, 'Features'),
+                  SwitchListTile(
+                    title: const Text('Furnished'),
+                    value: _isFurnished,
+                    onChanged: (val) => setState(() => _isFurnished = val),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Parking Available'),
+                    value: _hasParking,
+                    onChanged: (val) => setState(() => _hasParking = val),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Pet-Friendly'),
+                    value: _isPetFriendly,
+                    onChanged: (val) => setState(() => _isPetFriendly = val),
                   ),
 
                   _buildSectionHeader(Icons.star_outline, 'Amenities'),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 40, bottom: 20),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _amenityOptions.map((amenity) {
-                        final isSelected = _selectedAmenities.contains(amenity);
-                        return FilterChip(
-                          label: Text(amenity),
-                          selected: isSelected,
-                          onSelected: (bool selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedAmenities.add(amenity);
-                              } else {
-                                _selectedAmenities.remove(amenity);
-                              }
-                            });
-                          },
-                          selectedColor: Colors.blue[50],
-                          checkmarkColor: Colors.blue,
-                          labelStyle: TextStyle(color: isSelected ? Colors.blue : Colors.black87, fontSize: 12),
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(color: isSelected ? Colors.blue : Colors.grey[300]!),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-
-                  _buildSectionHeader(Icons.image_outlined, 'Images'),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 40, bottom: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_images.isEmpty)
-                          GestureDetector(
-                            onTap: _pickImages,
-                            child: Container(
-                              height: 100,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: const Icon(Icons.add_a_photo_outlined, color: Colors.blue),
-                            ),
-                          )
-                        else
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey[200]!),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ..._images.asMap().entries.map((entry) {
-                                  int idx = entry.key;
-                                  File file = entry.value;
-                                  String name = file.path.split('/').last;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Text(
-                                      '• $name${idx == 0 ? " (Main)" : ""}',
-                                      style: const TextStyle(fontSize: 13, color: Colors.black87),
-                                    ),
-                                  );
-                                }).toList(),
-                                TextButton(onPressed: _pickImages, child: const Text('Change Photos')),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
+                  Wrap(
+                    spacing: 8,
+                    children: _amenityOptions.map((amenity) {
+                      final isSelected = _selectedAmenities.contains(amenity);
+                      return FilterChip(
+                        label: Text(amenity),
+                        selected: isSelected,
+                        onSelected: (bool selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedAmenities.add(amenity);
+                            } else {
+                              _selectedAmenities.remove(amenity);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
 
                   const SizedBox(height: 20),
+                  _buildSectionHeader(Icons.image_outlined, 'Photos'),
+                  if (_images.isEmpty)
+                    GestureDetector(
+                      onTap: _pickImages,
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: const Icon(Icons.add_a_photo, size: 40, color: Colors.blue),
+                      ),
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _images.map((file) => Image.file(file, width: 80, height: 80, fit: BoxFit.cover)).toList(),
+                    ),
+
+                  const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -256,50 +247,31 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Widget _buildSectionHeader(IconData icon, String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(vertical: 15),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF0D47A1), size: 24),
-          const SizedBox(width: 15),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87)),
+          Icon(icon, color: Colors.blue[800]),
+          const SizedBox(width: 10),
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildFormRow(IconData icon, String label, TextEditingController controller, String hint, {TextInputType keyboardType = TextInputType.text}) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: const Color(0xFF0D47A1), size: 24),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Row(
-                children: [
-                  SizedBox(width: 100, child: Text(label, style: const TextStyle(fontSize: 14, color: Colors.black54))),
-                  Expanded(
-                    child: TextFormField(
-                      controller: controller,
-                      keyboardType: keyboardType,
-                      decoration: InputDecoration(
-                        hintText: hint,
-                        hintStyle: TextStyle(color: Colors.grey[300], fontSize: 14),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey[200]!)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey[200]!)),
-                      ),
-                      validator: (val) => val!.isEmpty ? 'Required' : null,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+  Widget _buildTextField(TextEditingController controller, String label, String hint, {TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        const SizedBox(height: 15),
-      ],
+        validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+      ),
     );
   }
 }

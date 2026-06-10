@@ -9,14 +9,17 @@ class SplashScreen extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Image (Building)
-          Image.network(
-            'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-            fit: BoxFit.cover,
+          // Background Color / Image (Building)
+          Container(
+            color: const Color(0xFF0D47A1),
+            child: Image.network(
+              'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(color: const Color(0xFF0D47A1)),
+            ),
           ),
           // Dark Blue Overlay
-          Container(
-            color: const Color(0xFF0D47A1).withOpacity(0.85),
+          Container(color: const Color.fromRGBO(13, 71, 161, 0.85),
           ),
           // Content
           Column(

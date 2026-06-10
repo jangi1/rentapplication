@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/apartment_model.dart';
+import '../../models/inquiry_model.dart';
 import '../../providers/user_provider.dart';
 import '../../services/database_service.dart';
-import 'my_listings_screen.dart';
 
 class LandlordHomeScreen extends StatelessWidget {
-  const LandlordHomeScreen({super.key});
+  final VoidCallback onViewAll;
+  
+  const LandlordHomeScreen({super.key, required this.onViewAll});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +21,8 @@ class LandlordHomeScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(user?.fullName ?? 'Landlord'),
-            _buildStatsGrid(),
+            _buildStatsSection(user?.uid ?? '', db),
+            _buildRecentInquiriesSection(user?.uid ?? '', db),
             _buildRecentListingsSection(context, user?.uid ?? '', db),
           ],
         ),
@@ -45,13 +48,26 @@ class LandlordHomeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Icon(Icons.menu, color: Colors.white),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.notifications_none, color: Colors.white),
+              Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.notifications_none, color: Colors.white),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                      constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                    ),
+                  )
+                ],
               ),
             ],
           ),
@@ -66,7 +82,7 @@ class LandlordHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           const Text(
-            "Here's what's happening today.",
+            "Here's your property overview.",
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
         ],
@@ -74,107 +90,105 @@ class LandlordHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 15,
-        childAspectRatio: 1.6,
-        children: [
-          _statCard('Total Listings', '12', const Color(0xFFE3F2FD), const Color(0xFF1E88E5)),
-          _statCard('Active Listings', '8', const Color(0xFFE8F5E9), const Color(0xFF43A047)),
-          _statCard('Rented Out', '4', const Color(0xFFFFF3E0), const Color(0xFFFB8C00)),
-          _statCard('Total Views', '320', const Color(0xFFF3E5F5), const Color(0xFF8E24AA)),
-        ],
-      ),
+  Widget _buildStatsSection(String landlordId, DatabaseService db) {
+    return StreamBuilder<List<ApartmentModel>>(
+      stream: db.getLandlordApartments(landlordId),
+      builder: (context, snapshot) {
+        int total = snapshot.hasData ? snapshot.data!.length : 0;
+        int active = snapshot.hasData ? snapshot.data!.where((a) => a.status == 'Available').length : 0;
+        int rented = snapshot.hasData ? snapshot.data!.where((a) => a.status == 'Rented').length : 0;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 15,
+            crossAxisSpacing: 15,
+            childAspectRatio: 1.6,
+            children: [
+              _statCard('Total Listings', '$total', const Color(0xFF1E88E5)),
+              _statCard('Active', '$active', const Color(0xFF43A047)),
+              _statCard('Rented', '$rented', const Color(0xFFFB8C00)),
+              _statCard('Pending Inquiries', '3', const Color(0xFFE91E63)),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _statCard(String title, String count, Color bgColor, Color textColor) {
+  Widget _statCard(String title, String count, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500),
-          ),
-          Text(
-            count,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
+          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
   }
 
-  Widget _buildRecentListingsSection(BuildContext context, String landlordId, DatabaseService db) {
+  Widget _buildRecentInquiriesSection(String landlordId, DatabaseService db) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Listings',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: () {
-                  // Navigate to Listings tab logic would go here if needed
-                },
-                child: const Text('See All', style: TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+          child: Text('Recent Inquiries', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ),
-        StreamBuilder<List<ApartmentModel>>(
-          stream: db.getLandlordApartments(landlordId),
+        StreamBuilder<List<InquiryModel>>(
+          stream: db.getLandlordInquiries(landlordId),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(),
-              );
-            }
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('No listings yet.'),
+                padding: EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+                child: Text('No recent inquiries', style: TextStyle(color: Colors.grey)),
               );
             }
-
-            final listings = snapshot.data!.take(3).toList();
+            final inquiries = snapshot.data!.take(2).toList();
             return ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: listings.length,
+              itemCount: inquiries.length,
               itemBuilder: (context, index) {
-                final apt = listings[index];
-                return _buildRecentListingItem(context, apt);
+                final inq = inquiries[index];
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(backgroundColor: Color(0xFFBBDEFB), child: Icon(Icons.person, color: Color(0xFF1E88E5))),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Inquiry from Tenant', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text(inq.message, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
+                    ],
+                  ),
+                );
               },
             );
           },
@@ -183,77 +197,79 @@ class LandlordHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentListingItem(BuildContext context, ApartmentModel apt) {
-    Color statusColor;
-    String statusLabel = apt.status;
-    
-    if (apt.status == 'Available') {
-      statusColor = Colors.green;
-      statusLabel = 'Active';
-    } else if (apt.status == 'Rented') {
-      statusColor = Colors.red;
-    } else {
-      statusColor = Colors.orange;
-    }
+  Widget _buildRecentListingsSection(BuildContext context, String landlordId, DatabaseService db) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('My Listings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              TextButton(onPressed: onViewAll, child: const Text('See All')),
+            ],
+          ),
+        ),
+        StreamBuilder<List<ApartmentModel>>(
+          stream: db.getLandlordApartments(landlordId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox();
+            final listings = snapshot.data!.take(3).toList();
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: listings.length,
+              itemBuilder: (context, index) {
+                final apt = listings[index];
+                return _buildRecentListingItem(apt);
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
 
+  Widget _buildRecentListingItem(ApartmentModel apt) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: apt.imageUrls.isNotEmpty
-                ? Image.network(apt.imageUrls.first, width: 65, height: 65, fit: BoxFit.cover)
-                : Container(width: 65, height: 65, color: Colors.grey[200], child: const Icon(Icons.apartment)),
+                ? Image.network(apt.imageUrls.first, width: 60, height: 60, fit: BoxFit.cover)
+                : Container(width: 60, height: 60, color: Colors.grey[200], child: const Icon(Icons.apartment)),
           ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  apt.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '₱ ${apt.price} /month',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                ),
+                Text(apt.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text('₱ ${apt.price}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              statusLabel,
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          _statusBadge(apt.status),
         ],
       ),
+    );
+  }
+
+  Widget _statusBadge(String status) {
+    Color color = status == 'Available' ? Colors.green : (status == 'Rented' ? Colors.red : Colors.orange);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+      child: Text(status, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 }

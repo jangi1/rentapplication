@@ -25,12 +25,16 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = true);
       try {
         await _auth.signInWithEmail(_emailController.text.trim(), _passwordController.text.trim());
+        if (!mounted) return;
+        Navigator.of(context).popUntil((route) => route.isFirst);
       } on FirebaseAuthException catch (e) {
+        if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message ?? 'Authentication failed')),
         );
       } catch (e) {
+        if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('An unexpected error occurred.')),
@@ -64,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Text(
                       'Welcome Back!',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 32,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1A1A1A),
                       ),
@@ -78,38 +82,52 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 40),
-                    const Text('Email', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Email', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
                       decoration: InputDecoration(
                         hintText: 'Enter your email',
-                        prefixIcon: const Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                        prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey, size: 20),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
                         ),
                       ),
                       validator: (val) => val!.isEmpty ? 'Enter an email' : null,
                     ),
                     const SizedBox(height: 20),
-                    const Text('Password', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         hintText: 'Enter your password',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                        prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey, size: 20),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.grey, size: 20),
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
                         ),
                       ),
                       validator: (val) => val!.length < 6 ? 'Enter a password 6+ chars long' : null,
@@ -120,51 +138,58 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()));
                         },
-                        child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF1E88E5))),
+                        child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF1E88E5), fontSize: 13)),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E88E5),
+                          elevation: 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _login,
-                        child: const Text('Login', style: TextStyle(color: Colors.white, fontSize: 18)),
+                        child: const Text('Login', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                       ),
                     ),
                     const SizedBox(height: 30),
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Expanded(child: Divider(color: Colors.grey.shade200)),
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text('or continue with', style: TextStyle(color: Colors.grey)),
+                          child: Text('or continue with', style: TextStyle(color: Colors.grey, fontSize: 13)),
                         ),
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Expanded(child: Divider(color: Colors.grey.shade200)),
                       ],
                     ),
                     const SizedBox(height: 30),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _socialButton(Icons.g_mobiledata, 'Google'),
-                        _socialButton(Icons.facebook, 'Facebook'),
+                        _socialButton(Icons.g_mobiledata, Colors.red, "G"),
+                        const SizedBox(width: 20),
+                        _socialButton(Icons.facebook, Colors.blue.shade900, "f"),
                       ],
                     ),
                     const SizedBox(height: 40),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Don't have an account?"),
+                        const Text("Don't have an account?", style: TextStyle(color: Colors.grey, fontSize: 14)),
                         TextButton(
                           onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(selectedRole: widget.selectedRole)));
+                            Navigator.push(
+                              context, 
+                              MaterialPageRoute(
+                                builder: (context) => RegisterScreen(initialRole: widget.selectedRole)
+                              )
+                            );
                           },
-                          child: const Text('Register', style: TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.bold)),
+                          child: const Text('Register', style: TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.bold, fontSize: 14)),
                         ),
                       ],
                     ),
@@ -176,22 +201,22 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _socialButton(IconData icon, String label) {
+  Widget _socialButton(IconData icon, Color color, String label) {
     return Container(
-      width: 140,
+      width: 100,
       height: 55,
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade100),
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+           BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))
+        ]
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: icon == Icons.facebook ? Colors.blue.shade900 : Colors.red, size: 30),
-          const SizedBox(width: 10),
-          // In the image it's just icons, but adding labels for clarity if needed. 
-          // Image 04 just shows Google and FB icons in circles/rounded squares.
-        ],
+      child: Center(
+        child: label == "G" 
+          ? const Text("G", style: TextStyle(color: Colors.red, fontSize: 24, fontWeight: FontWeight.bold))
+          : Icon(icon, color: color, size: 28),
       ),
     );
   }

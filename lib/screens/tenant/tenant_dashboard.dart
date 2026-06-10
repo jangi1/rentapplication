@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'apartment_listing_screen.dart';
 import 'favorites_screen.dart';
 import '../profile_screen.dart';
-import '../landlord/landlord_inquiries_screen.dart'; // Reusing for now or creating a new messages screen
+import '../messages_screen.dart';
 
 class TenantDashboard extends StatefulWidget {
   const TenantDashboard({super.key});
@@ -17,7 +17,7 @@ class _TenantDashboardState extends State<TenantDashboard> {
   final List<Widget> _screens = [
     const ApartmentListingScreen(),
     const FavoritesScreen(),
-    const LandlordInquiriesScreen(), // Acts as Messages for now
+    const MessagesScreen(),
     const ProfileScreen(),
   ];
 
@@ -33,7 +33,7 @@ class _TenantDashboardState extends State<TenantDashboard> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),

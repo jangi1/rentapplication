@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.rentapplication"
-        // minSdk 23 is required for many Firebase features
+        // Set minSdk to 23 for better Firebase support
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode

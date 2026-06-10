@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 
 class AuthService {
@@ -25,10 +26,10 @@ class AuthService {
       }
       return user;
     } on FirebaseAuthException catch (e) {
-      print('Firebase Auth Error: ${e.code} - ${e.message}');
+      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
       rethrow;
     } catch (e) {
-      print('Registration Error: $e');
+      debugPrint('Registration Error: $e');
       throw Exception('An unknown error occurred during registration.');
     }
   }
@@ -38,10 +39,10 @@ class AuthService {
       UserCredential result = await _auth.signInWithEmailAndPassword(email: email, password: password);
       return result.user;
     } on FirebaseAuthException catch (e) {
-      print('Firebase Auth Error: ${e.code} - ${e.message}');
+      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
       rethrow;
     } catch (e) {
-      print('Login Error: $e');
+      debugPrint('Login Error: $e');
       throw Exception('An unknown error occurred during login.');
     }
   }
@@ -58,7 +59,7 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      print('Get User Data Error: $e');
+      debugPrint('Get User Data Error: $e');
       return null;
     }
   }
