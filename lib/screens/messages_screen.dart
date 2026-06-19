@@ -38,14 +38,20 @@ class MessagesScreen extends StatelessWidget {
             return _buildEmptyState();
           }
 
-          // Group by conversation (participants)
+          // Group by unique conversation identification (listingId, tenantId, landlordId)
           final Map<String, MessageModel> conversations = {};
           for (var msg in snapshot.data!) {
-            final participants = List<String>.from(msg.participants);
-            participants.sort();
-            final convId = participants.join('_');
-            if (!conversations.containsKey(convId)) {
+            final convId = msg.conversationId;
+            if (convId.isNotEmpty && !conversations.containsKey(convId)) {
               conversations[convId] = msg;
+            } else if (convId.isEmpty) {
+               // Fallback for older messages if any
+               final participants = List<String>.from(msg.participants);
+               participants.sort();
+               final legacyId = participants.join('_');
+               if (!conversations.containsKey(legacyId)) {
+                 conversations[legacyId] = msg;
+               }
             }
           }
 
@@ -60,8 +66,8 @@ class MessagesScreen extends StatelessWidget {
               return FutureBuilder<UserModel?>(
                 future: AuthService().getUserData(otherUserId),
                 builder: (context, userSnapshot) {
-                  final otherUserName = userSnapshot.hasData 
-                      ? (userSnapshot.data!.fullName) 
+                  final otherUserName = userSnapshot.hasData
+                      ? (userSnapshot.data!.fullName)
                       : 'Loading...';
 
                   return ListTile(
@@ -73,25 +79,37 @@ class MessagesScreen extends StatelessWidget {
                       otherUserName,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(
-                      msg.text,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (msg.apartmentId != null)
+                          Text('Re: Property ${msg.apartmentId}', style: const TextStyle(fontSize: 11, color: Colors.blue)),
+                        Text(
+                          msg.text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                     trailing: Text(
                       _formatTimestamp(msg.timestamp),
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatRoomScreen(
-                            otherUserId: otherUserId,
-                            otherUserName: otherUserName,
+                      if (msg.apartmentId != null && msg.landlordId != null && msg.tenantId != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatRoomScreen(
+                              otherUserId: otherUserId,
+                              otherUserName: otherUserName,
+                              apartmentId: msg.apartmentId!,
+                              landlordId: msg.landlordId!,
+                              tenantId: msg.tenantId!,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     },
                   );
                 },

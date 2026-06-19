@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/apartment_model.dart';
+import '../../models/inquiry_model.dart';
 import '../../providers/user_provider.dart';
 import '../../services/database_service.dart';
-import '../../services/auth_service.dart';
-import '../../models/user_model.dart';
+import '../../models/message_model.dart';
 import '../chat_room_screen.dart';
+
+import 'request_viewing_screen.dart';
 
 class ApartmentDetailsScreen extends StatefulWidget {
   final ApartmentModel apartment;
@@ -177,6 +179,10 @@ class _ApartmentDetailsScreenState extends State<ApartmentDetailsScreen> {
             ],
           ),
           const SizedBox(height: 30),
+          _buildInquiryAction(context, user?.uid),
+          const SizedBox(height: 15),
+          _buildViewingAction(context, user?.uid),
+          const SizedBox(height: 30),
           const Text('About this place', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
            Text(
@@ -198,6 +204,145 @@ class _ApartmentDetailsScreenState extends State<ApartmentDetailsScreen> {
             ),
           ],
           const SizedBox(height: 100), // Space for bottom buttons
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInquiryAction(BuildContext context, String? userId) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: Color(0xFF1E88E5)),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Interested in this property?',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          TextButton(
+            onPressed: () => _showInquiryDialog(context, userId),
+            child: const Text('Send Inquiry', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewingAction(BuildContext context, String? userId) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.calendar_month_outlined, color: Colors.green),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Want to see the place?',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              if (userId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RequestViewingScreen(apartment: widget.apartment),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please log in to schedule a viewing')));
+              }
+            },
+            child: const Text('Schedule Viewing', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showInquiryDialog(BuildContext context, String? userId) {
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please log in to send an inquiry')));
+      return;
+    }
+
+    final user = Provider.of<UserProvider>(context, listen: false).user;
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send Inquiry'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'I am interested in this property. Is it still available?',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final messageText = controller.text.trim();
+              if (messageText.isEmpty) return;
+
+              final inquiry = InquiryModel(
+                id: '',
+                apartmentId: widget.apartment.id,
+                propertyTitle: widget.apartment.title,
+                landlordId: widget.apartment.landlordId,
+                landlordName: widget.apartment.landlordName,
+                tenantId: userId,
+                tenantName: user?.fullName ?? 'Tenant',
+                message: messageText,
+                inquiryDate: DateTime.now(),
+                status: 'Pending',
+              );
+
+              final db = DatabaseService();
+              await db.sendInquiry(inquiry);
+
+              // Automatically create a chat conversation (Requirement F - Option 1)
+              final conversationId = "${widget.apartment.id}_${userId}_${widget.apartment.landlordId}";
+              final List<String> participants = [userId, widget.apartment.landlordId];
+              participants.sort();
+
+              final initialMessage = MessageModel(
+                id: '',
+                conversationId: conversationId,
+                senderId: userId,
+                receiverId: widget.apartment.landlordId,
+                senderRole: 'Tenant',
+                text: "Inquiry about ${widget.apartment.title}: $messageText",
+                timestamp: DateTime.now(),
+                participants: participants,
+                apartmentId: widget.apartment.id,
+                landlordId: widget.apartment.landlordId,
+                tenantId: userId,
+              );
+
+              await db.sendMessage(initialMessage);
+
+              if (context.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Inquiry sent and message started!')));
+              }
+            },
+            child: const Text('Send'),
+          ),
         ],
       ),
     );
@@ -260,35 +405,31 @@ class _ApartmentDetailsScreenState extends State<ApartmentDetailsScreen> {
         child: Row(
           children: [
             Expanded(
-              child: FutureBuilder<UserModel?>(
-                future: AuthService().getUserData(widget.apartment.landlordId),
-                builder: (context, snapshot) {
-                  final landlordName = snapshot.data?.fullName ?? 'Landlord';
-                  return OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      side: const BorderSide(color: Color(0xFF1E88E5)),
-                    ),
-                    onPressed: () {
-                      if (userId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatRoomScreen(
-                              otherUserId: widget.apartment.landlordId,
-                              otherUserName: landlordName,
-                              apartmentId: widget.apartment.id,
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please log in to contact the landlord')));
-                      }
-                    },
-                    child: Text('Message $landlordName', style: const TextStyle(color: Color(0xFF1E88E5), fontSize: 14, overflow: TextOverflow.ellipsis)),
-                  );
-                }
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  side: const BorderSide(color: Color(0xFF1E88E5)),
+                ),
+                onPressed: () {
+                  if (userId != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatRoomScreen(
+                          otherUserId: widget.apartment.landlordId,
+                          otherUserName: widget.apartment.landlordName,
+                          apartmentId: widget.apartment.id,
+                          landlordId: widget.apartment.landlordId,
+                          tenantId: userId,
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please log in to contact the landlord')));
+                  }
+                },
+                child: Text('Message ${widget.apartment.landlordName}', style: const TextStyle(color: Color(0xFF1E88E5), fontSize: 14, overflow: TextOverflow.ellipsis)),
               ),
             ),
             const SizedBox(width: 15),

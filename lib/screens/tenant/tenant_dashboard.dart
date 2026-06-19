@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'apartment_listing_screen.dart';
 import 'favorites_screen.dart';
+import 'inquiry_history_screen.dart';
 import '../profile_screen.dart';
 import '../messages_screen.dart';
 
@@ -17,6 +18,7 @@ class _TenantDashboardState extends State<TenantDashboard> {
   final List<Widget> _screens = [
     const ApartmentListingScreen(),
     const FavoritesScreen(),
+    const InquiryHistoryScreen(),
     const MessagesScreen(),
     const ProfileScreen(),
   ];
@@ -58,6 +60,11 @@ class _TenantDashboardState extends State<TenantDashboard> {
               icon: Icon(Icons.favorite_border),
               activeIcon: Icon(Icons.favorite),
               label: 'Saved',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_outlined),
+              activeIcon: Icon(Icons.assignment),
+              label: 'Inquiries',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline),

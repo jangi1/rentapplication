@@ -26,7 +26,13 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         await _auth.signInWithEmail(_emailController.text.trim(), _passwordController.text.trim());
         if (!mounted) return;
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        
+        // Use a slight delay to allow the state to propagate, then pop
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+        });
       } on FirebaseAuthException catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
@@ -183,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextButton(
                           onPressed: () {
                             Navigator.push(
-                              context, 
+                              context,
                               MaterialPageRoute(
                                 builder: (context) => RegisterScreen(initialRole: widget.selectedRole)
                               )
@@ -214,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ]
       ),
       child: Center(
-        child: label == "G" 
+        child: label == "G"
           ? const Text("G", style: TextStyle(color: Colors.red, fontSize: 24, fontWeight: FontWeight.bold))
           : Icon(icon, color: color, size: 28),
       ),

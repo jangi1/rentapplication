@@ -10,6 +10,8 @@ class UserModel {
   final DateTime createdAt;
   final LocationModel? location;
   final bool isVerified;
+  final String? verificationStatus;
+  final String? idImageUrl;
 
   UserModel({
     required this.uid,
@@ -20,6 +22,8 @@ class UserModel {
     required this.createdAt,
     this.location,
     this.isVerified = false,
+    this.verificationStatus,
+    this.idImageUrl,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String id) {
@@ -34,6 +38,8 @@ class UserModel {
           : DateTime.now(),
       location: data['location'] != null ? LocationModel.fromMap(data['location']) : null,
       isVerified: data['isVerified'] ?? false,
+      verificationStatus: data['verificationStatus'],
+      idImageUrl: data['idImageUrl'],
     );
   }
 
@@ -46,6 +52,8 @@ class UserModel {
       'createdAt': createdAt,
       'location': location?.toMap(),
       'isVerified': isVerified,
+      'verificationStatus': verificationStatus,
+      'idImageUrl': idImageUrl,
     };
   }
 }

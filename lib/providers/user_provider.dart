@@ -4,9 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _userModel;
+  User? _firebaseUser;
   bool _isInitialized = false;
   final AuthService _authService = AuthService();
   StreamSubscription<User?>? _authSubscription;
@@ -19,22 +21,15 @@ class UserProvider with ChangeNotifier {
       _isInitialized = true;
       notifyListeners();
     });
-    
-    // Safety timeout for web and emulator to ensure splash screen doesn't hang
-    // indefinitely if auth state takes too long to respond.
-    Future.delayed(const Duration(seconds: 10), () {
-      if (!_isInitialized) {
-        debugPrint("UserProvider: Initialization timeout reached. Forcing initialization.");
-        _isInitialized = true;
-        notifyListeners();
-      }
-    });
   }
 
   UserModel? get user => _userModel;
+  User? get firebaseUser => _firebaseUser;
   bool get isInitialized => _isInitialized;
+  bool get isLoadingProfile => _firebaseUser != null && _userModel == null && !_isInitialized;
 
   Future<void> _onAuthChanged(User? firebaseUser) async {
+    _firebaseUser = firebaseUser;
     final String? newUid = firebaseUser?.uid;
 
     if (newUid == null) {
@@ -46,12 +41,17 @@ class UserProvider with ChangeNotifier {
       return;
     }
 
-    if (newUid == _lastUid) return;
+    if (newUid == _lastUid && _userModel != null) {
+      _isInitialized = true;
+      notifyListeners();
+      return;
+    }
 
     _lastUid = newUid;
-    _isInitialized = false;
+    _userModel = null;
+    _isInitialized = false; 
     notifyListeners();
-
+    
     _userDocSubscription?.cancel();
     _userDocSubscription = FirebaseFirestore.instance
         .collection('users')
@@ -60,10 +60,13 @@ class UserProvider with ChangeNotifier {
         .listen((snapshot) {
       if (snapshot.exists) {
         _userModel = UserModel.fromMap(snapshot.data() as Map<String, dynamic>, snapshot.id);
+        NotificationService().updateToken(newUid);
+        _isInitialized = true;
       } else {
         _userModel = null;
+        _isInitialized = true; // Still initialized, but no profile
+        debugPrint("UserProvider: Firestore document does not exist for $newUid");
       }
-      _isInitialized = true;
       notifyListeners();
     }, onError: (e) {
       debugPrint("Error listening to user profile: $e");

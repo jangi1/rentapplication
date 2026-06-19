@@ -15,7 +15,6 @@ class _FilterScreenState extends State<FilterScreen> {
   late String _selectedBedrooms;
   late Map<String, bool> _features;
 
-  // Location controllers
   final _provinceController = TextEditingController();
   final _cityController = TextEditingController();
   final _barangayController = TextEditingController();
@@ -27,7 +26,7 @@ class _FilterScreenState extends State<FilterScreen> {
   void initState() {
     super.initState();
     final f = widget.initialFilters;
-    _currentRangeValues = RangeValues(f?.minPrice ?? 0, f?.maxPrice ?? 50000);
+    _currentRangeValues = RangeValues(f?.minPrice ?? 0, f?.maxPrice ?? 100000);
     _selectedPropertyType = f?.propertyType ?? 'All';
     _selectedBedrooms = f?.bedrooms == null ? 'All' : (f!.bedrooms == 0 ? 'Studio' : (f.bedrooms == 3 ? '3+' : f.bedrooms.toString()));
     
@@ -45,155 +44,168 @@ class _FilterScreenState extends State<FilterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Filters', style: TextStyle(fontWeight: FontWeight.bold)),
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black),
+          icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Filters', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        centerTitle: true,
         actions: [
           TextButton(
-            onPressed: () {
-              setState(() {
-                _currentRangeValues = const RangeValues(0, 50000);
-                _selectedPropertyType = 'All';
-                _selectedBedrooms = 'All';
-                _features.updateAll((key, value) => key == 'Available Now' ? true : false);
-                _provinceController.clear();
-                _cityController.clear();
-                _barangayController.clear();
-              });
-            },
-            child: const Text('Reset', style: TextStyle(color: Color(0xFF1E88E5))),
+            onPressed: _resetFilters,
+            child: const Text('Reset'),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle('Location'),
-            const SizedBox(height: 15),
-            _buildLocationField(_provinceController, 'Province', 'e.g. Davao del Sur'),
-            _buildLocationField(_cityController, 'City / Municipality', 'e.g. Davao City'),
-            _buildLocationField(_barangayController, 'Barangay', 'e.g. Bucana'),
+            _buildSectionHeader('Location', theme),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _provinceController,
+              decoration: const InputDecoration(labelText: 'Province', prefixIcon: Icon(Icons.map_outlined)),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _cityController,
+              decoration: const InputDecoration(labelText: 'City / Municipality', prefixIcon: Icon(Icons.location_city_outlined)),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _barangayController,
+              decoration: const InputDecoration(labelText: 'Barangay', prefixIcon: Icon(Icons.place_outlined)),
+            ),
             
-            const SizedBox(height: 20),
-            _buildSectionTitle('Price Range'),
-            const SizedBox(height: 10),
+            const SizedBox(height: 32),
+            _buildSectionHeader('Price Range', theme),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('₱ ${_currentRangeValues.start.round()}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('₱ ${_currentRangeValues.end.round()}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                _priceDisplay('Min', _currentRangeValues.start, theme),
+                Icon(Icons.remove, color: theme.dividerColor),
+                _priceDisplay('Max', _currentRangeValues.end, theme),
               ],
             ),
+            const SizedBox(height: 16),
             RangeSlider(
               values: _currentRangeValues,
               min: 0,
-              max: 50000,
-              divisions: 50,
-              activeColor: const Color(0xFF1E88E5),
-              inactiveColor: Colors.blue.withValues(alpha: 0.1),
-              onChanged: (RangeValues values) {
-                setState(() => _currentRangeValues = values);
-              },
+              max: 100000,
+              divisions: 100,
+              onChanged: (values) => setState(() => _currentRangeValues = values),
             ),
             
-            const SizedBox(height: 30),
-            _buildSectionTitle('Property Type'),
-            const SizedBox(height: 15),
+            const SizedBox(height: 32),
+            _buildSectionHeader('Property Type', theme),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 10,
+              spacing: 8,
+              runSpacing: 8,
               children: _propertyTypes.map((type) => _buildChoiceChip(type, _selectedPropertyType, (val) {
                 setState(() => _selectedPropertyType = val);
-              })).toList(),
+              }, theme)).toList(),
             ),
             
-            const SizedBox(height: 30),
-            _buildSectionTitle('Bedrooms'),
-            const SizedBox(height: 15),
+            const SizedBox(height: 32),
+            _buildSectionHeader('Bedrooms', theme),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 10,
+              spacing: 8,
+              runSpacing: 8,
               children: _bedroomOptions.map((opt) => _buildChoiceChip(opt, _selectedBedrooms, (val) {
                 setState(() => _selectedBedrooms = val);
-              })).toList(),
+              }, theme)).toList(),
             ),
             
-            const SizedBox(height: 30),
-            _buildSectionTitle('Features'),
-            const SizedBox(height: 10),
-            ..._features.keys.map((key) => CheckboxListTile(
-              title: Text(key),
-              value: _features[key],
-              activeColor: const Color(0xFF1E88E5),
-              onChanged: (val) => setState(() => _features[key] = val!),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            )),
-            const SizedBox(height: 100),
+            const SizedBox(height: 32),
+            _buildSectionHeader('Features', theme),
+            const SizedBox(height: 8),
+            _buildFeatureSwitch('Furnished', _features['Furnished']!, (v) => setState(() => _features['Furnished'] = v)),
+            _buildFeatureSwitch('Parking Available', _features['Parking']!, (v) => setState(() => _features['Parking'] = v)),
+            _buildFeatureSwitch('Pet-Friendly', _features['Pet-Friendly']!, (v) => setState(() => _features['Pet-Friendly'] = v)),
+            _buildFeatureSwitch('Show only available', _features['Available Now']!, (v) => setState(() => _features['Available Now'] = v)),
+            
+            const SizedBox(height: 120),
           ],
         ),
       ),
       bottomSheet: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
+          color: theme.scaffoldBackgroundColor,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
         ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 55,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E88E5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            ),
-            onPressed: _applyFilters,
-            child: const Text('Show Results', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          ),
+        child: ElevatedButton(
+          onPressed: _applyFilters,
+          child: const Text('Show Results'),
         ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+  Widget _buildSectionHeader(String title, ThemeData theme) {
+    return Text(
+      title,
+      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+    );
   }
 
-  Widget _buildLocationField(TextEditingController controller, String label, String hint) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
+  Widget _priceDisplay(String label, double value, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          Text('₱${value.round()}', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
 
-  Widget _buildChoiceChip(String label, String selectedValue, Function(String) onSelected) {
+  Widget _buildChoiceChip(String label, String selectedValue, Function(String) onSelected, ThemeData theme) {
     bool isSelected = label == selectedValue;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (bool selected) { if (selected) onSelected(label); },
-      selectedColor: const Color(0xFF1E88E5),
-      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
-      backgroundColor: Colors.grey[100],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide.none),
+      showCheckmark: false,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
+  }
+
+  Widget _buildFeatureSwitch(String label, bool value, Function(bool) onChanged) {
+    return SwitchListTile(
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      value: value,
+      onChanged: onChanged,
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _currentRangeValues = const RangeValues(0, 100000);
+      _selectedPropertyType = 'All';
+      _selectedBedrooms = 'All';
+      _features.updateAll((key, value) => key == 'Available Now' ? true : false);
+      _provinceController.clear();
+      _cityController.clear();
+      _barangayController.clear();
+    });
   }
 
   void _applyFilters() {

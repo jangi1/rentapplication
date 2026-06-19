@@ -4,6 +4,7 @@ import 'location_model.dart';
 class ApartmentModel {
   final String id;
   final String landlordId;
+  final String landlordName;
   final String title;
   final String description;
   final double price;
@@ -28,6 +29,7 @@ class ApartmentModel {
   ApartmentModel({
     required this.id,
     required this.landlordId,
+    required this.landlordName,
     required this.title,
     required this.description,
     required this.price,
@@ -50,6 +52,7 @@ class ApartmentModel {
     return ApartmentModel(
       id: id,
       landlordId: data['landlordId'] ?? '',
+      landlordName: data['landlordName'] ?? '',
       title: data['title'] ?? '',
       description: data['description'] ?? '',
       price: (data['price'] ?? 0).toDouble(),
@@ -74,6 +77,7 @@ class ApartmentModel {
   Map<String, dynamic> toMap() {
     return {
       'landlordId': landlordId,
+      'landlordName': landlordName,
       'title': title,
       'description': description,
       'price': price,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/apartment_model.dart';
 import '../../models/filter_model.dart';
+import '../../providers/user_provider.dart';
 import '../../services/database_service.dart';
 import 'apartment_details_screen.dart';
 import 'filter_screen.dart';
@@ -45,21 +47,23 @@ class _ApartmentListingScreenState extends State<ApartmentListingScreen> {
   }
 
   Widget _buildHeader() {
+    final user = Provider.of<UserProvider>(context).user;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.location_on, color: Color(0xFF1E88E5), size: 22),
-              const SizedBox(width: 8),
-              const Text(
-                'Davao City, PH',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+              Text(
+                'Welcome back,',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade400, size: 20),
+              Text(
+                user?.fullName ?? 'Guest User',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+              ),
             ],
           ),
           Container(
@@ -225,7 +229,7 @@ class _ApartmentListingScreenState extends State<ApartmentListingScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         
-        final apartments = snapshot.hasData 
+        final apartments = snapshot.hasData
           ? snapshot.data!.where((apt) {
               // 1. Search Query
               final matchesSearch = apt.location.toString().toLowerCase().contains(_searchQuery) || 
@@ -235,7 +239,7 @@ class _ApartmentListingScreenState extends State<ApartmentListingScreen> {
               }
 
               // 2. Property Type (Category)
-              final matchesType = _activeFilters.propertyType == 'All' || 
+              final matchesType = _activeFilters.propertyType == 'All' ||
                                  _activeFilters.propertyType == null ||
                                  apt.propertyType.toLowerCase() == _activeFilters.propertyType!.toLowerCase();
               if (!matchesType) {
@@ -243,7 +247,7 @@ class _ApartmentListingScreenState extends State<ApartmentListingScreen> {
               }
 
               // 3. Price Range
-              if (apt.price < (_activeFilters.minPrice ?? 0) || 
+              if (apt.price < (_activeFilters.minPrice ?? 0) ||
                   apt.price > (_activeFilters.maxPrice ?? 1000000)) {
                 return false;
               }
@@ -262,7 +266,7 @@ class _ApartmentListingScreenState extends State<ApartmentListingScreen> {
               }
 
               // 5. Location Filters (Province, City, Barangay)
-              if (_activeFilters.province != null && 
+              if (_activeFilters.province != null &&
                   !apt.location.province.toLowerCase().contains(_activeFilters.province!.toLowerCase())) {
                 return false;
               }
@@ -285,7 +289,7 @@ class _ApartmentListingScreenState extends State<ApartmentListingScreen> {
               if (_activeFilters.isPetFriendly == true && !apt.isPetFriendly) {
                 return false;
               }
-              
+
               // 7. Availability
               if (_activeFilters.onlyAvailable && apt.status != 'Available') {
                 return false;
@@ -366,7 +370,7 @@ class _ApartmentListingScreenState extends State<ApartmentListingScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          apt.location.toString(), 
+                          apt.location.toString(),
                           style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                           overflow: TextOverflow.ellipsis,
                         ),

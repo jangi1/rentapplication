@@ -50,7 +50,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         
         if (!mounted) return;
         if (user != null) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration Successful! Please log in to continue.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop(); // Redirect to Login Screen
         }
       } on FirebaseAuthException catch (e) {
         if (!mounted) return;

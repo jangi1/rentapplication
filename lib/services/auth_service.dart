@@ -23,6 +23,8 @@ class AuthService {
           'contactNumber': contactNumber,
           'createdAt': FieldValue.serverTimestamp(),
         });
+        // Log out immediately after registration to follow the "no auto-login" rule
+        await _auth.signOut();
       }
       return user;
     } on FirebaseAuthException catch (e) {

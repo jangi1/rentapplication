@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
+import 'landlord/verification_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -36,6 +37,15 @@ class ProfileScreen extends StatelessWidget {
               title: 'Account Settings',
               items: [
                 _buildMenuItem(Icons.person_outline, 'Personal Information', () {}),
+                if (user?.role == 'Landlord')
+                  _buildMenuItem(
+                    user?.verificationStatus == 'Verified' ? Icons.verified : Icons.verified_user_outlined,
+                    'Get Verified',
+                    () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const VerificationScreen()));
+                    },
+                    color: user?.verificationStatus == 'Verified' ? Colors.green : null,
+                  ),
                 _buildMenuItem(Icons.notifications_none, 'Notifications', () {}),
                 _buildMenuItem(Icons.lock_outline, 'Security', () {}),
               ],
@@ -83,9 +93,19 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 15),
-        Text(
-          user?.fullName ?? 'User Name',
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              user?.fullName ?? 'User Name',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            if (user?.verificationStatus == 'Verified')
+              const Padding(
+                padding: EdgeInsets.only(left: 8.0),
+                child: Icon(Icons.verified, color: Colors.blue, size: 20),
+              ),
+          ],
         ),
         const SizedBox(height: 5),
         Text(

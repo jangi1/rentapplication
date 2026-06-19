@@ -21,7 +21,6 @@ class _EditApartmentScreenState extends State<EditApartmentScreen> {
   late TextEditingController _bathroomsController;
   late TextEditingController _floorAreaController;
   
-  // Location Controllers
   late TextEditingController _provinceController;
   late TextEditingController _cityController;
   late TextEditingController _barangayController;
@@ -83,95 +82,145 @@ class _EditApartmentScreenState extends State<EditApartmentScreen> {
         ).toMap(),
       };
 
-      await DatabaseService().updateApartment(widget.apartment.id, data);
-      
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing updated successfully!')));
-        Navigator.pop(context);
+      try {
+        await DatabaseService().updateApartment(widget.apartment.id, data);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Property updated successfully!'), behavior: SnackBarBehavior.floating));
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating: $e'), behavior: SnackBarBehavior.floating));
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Edit Listing', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        title: const Text('Edit Property', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.all(24),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionHeader(Icons.info_outline, 'Basic Details'),
-                  _buildTextField(_titleController, 'Title', '2BR Apartment'),
-                  _buildTextField(_priceController, 'Monthly Rent', '12000', keyboardType: TextInputType.number),
-                  _buildTextField(_descriptionController, 'Description', 'Describe your property...', maxLines: 3),
-                  
-                  _buildSectionHeader(Icons.location_on_outlined, 'Location'),
-                  _buildTextField(_provinceController, 'Province', 'Davao del Sur'),
-                  _buildTextField(_cityController, 'City/Municipality', 'Davao City'),
-                  _buildTextField(_barangayController, 'Barangay', 'Ecoland'),
-                  _buildTextField(_streetController, 'Street Address (Optional)', 'Street name, House #'),
-                  
-                  _buildSectionHeader(Icons.home_work_outlined, 'Property Specs'),
+                   _buildSectionTitle('Basic Information', theme),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(labelText: 'Listing Title'),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _descriptionController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 20),
                   Row(
                     children: [
-                      Expanded(child: _buildTextField(_bedroomsController, 'Bedrooms', '2', keyboardType: TextInputType.number)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildTextField(_bathroomsController, 'Bathrooms', '1', keyboardType: TextInputType.number)),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _priceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Price / Month', prefixText: '₱ '),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildStatusDropdown(theme),
+                      ),
                     ],
                   ),
-                  _buildTextField(_floorAreaController, 'Floor Area (sqm)', '60', keyboardType: TextInputType.number),
-                  _buildTextField(_propertyTypeController, 'Property Type', 'Apartment'),
-
-                  _buildSectionHeader(Icons.update, 'Status'),
-                  _buildStatusDropdown(),
-
-                  _buildSectionHeader(Icons.featured_play_list_outlined, 'Features'),
-                  SwitchListTile(
-                    title: const Text('Furnished'),
-                    value: _isFurnished,
-                    onChanged: (val) => setState(() => _isFurnished = val),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Parking Available'),
-                    value: _hasParking,
-                    onChanged: (val) => setState(() => _hasParking = val),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Pet-Friendly'),
-                    value: _isPetFriendly,
-                    onChanged: (val) => setState(() => _isPetFriendly = val),
-                  ),
-
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E88E5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Location', theme),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _provinceController,
+                          decoration: const InputDecoration(labelText: 'Province'),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
                       ),
-                      onPressed: _updateApartment,
-                      child: const Text('Update Listing', style: TextStyle(color: Colors.white, fontSize: 18)),
-                    ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _cityController,
+                          decoration: const InputDecoration(labelText: 'City'),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _barangayController,
+                    decoration: const InputDecoration(labelText: 'Barangay'),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Specifications', theme),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _bedroomsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Bedrooms', prefixIcon: Icon(Icons.king_bed_outlined)),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _bathroomsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Bathrooms', prefixIcon: Icon(Icons.bathtub_outlined)),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                   TextFormField(
+                    controller: _floorAreaController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Floor Area (sqm)', prefixIcon: Icon(Icons.square_foot_outlined)),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Features', theme),
+                  const SizedBox(height: 16),
+                  _buildFeatureSwitch('Furnished', _isFurnished, (v) => setState(() => _isFurnished = v)),
+                  _buildFeatureSwitch('Parking Available', _hasParking, (v) => setState(() => _hasParking = v)),
+                  _buildFeatureSwitch('Pet-Friendly', _isPetFriendly, (v) => setState(() => _isPetFriendly = v)),
+                  
+                  const SizedBox(height: 48),
+                  ElevatedButton(
+                    onPressed: _updateApartment,
+                    child: const Text('Save Changes'),
+                  ),
+                  const SizedBox(height: 48),
                 ],
               ),
             ),
@@ -179,60 +228,37 @@ class _EditApartmentScreenState extends State<EditApartmentScreen> {
     );
   }
 
-  Widget _buildSectionHeader(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blue[800]),
-          const SizedBox(width: 10),
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ],
-      ),
+  Widget _buildSectionTitle(String title, ThemeData theme) {
+    return Text(
+      title,
+      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, String hint, {TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-      ),
+  Widget _buildFeatureSwitch(String label, bool value, Function(bool) onChanged) {
+    return SwitchListTile(
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      value: value,
+      onChanged: onChanged,
+      contentPadding: EdgeInsets.zero,
     );
   }
 
-  Widget _buildStatusDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _status,
-          isExpanded: true,
-          items: ['Available', 'Reserved', 'Rented'].map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-          onChanged: (newValue) {
-            setState(() {
-              _status = newValue!;
-            });
-          },
-        ),
-      ),
+  Widget _buildStatusDropdown(ThemeData theme) {
+    return DropdownButtonFormField<String>(
+      value: _status,
+      decoration: const InputDecoration(labelText: 'Status'),
+      items: ['Available', 'Reserved', 'Rented'].map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
+      onChanged: (newValue) {
+        setState(() {
+          _status = newValue!;
+        });
+      },
     );
   }
 }

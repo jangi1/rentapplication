@@ -12,8 +12,16 @@ import 'screens/landlord/location_setup_screen.dart';
 import 'screens/tenant/tenant_dashboard.dart';
 import 'screens/splash_screen.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 String? _firebaseInitError;
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +36,13 @@ void main() async {
         await Firebase.initializeApp();
       }
     }
+
+    // Set background handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    
+    // Initialize Notification Service
+    await NotificationService().initialize();
+
   } catch (e, st) {
     if (!kIsWeb) {
       _firebaseInitError = '$e\n$st';
@@ -163,17 +178,14 @@ class AuthWrapper extends StatelessWidget {
     }
 
     if (firebaseUser != null) {
-      return Scaffold(
+      return const Scaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text("Profile not found. Please try again."),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => AuthService().signOut(),
-                child: const Text("Sign Out"),
-              ),
+              CircularProgressIndicator(),
+              SizedBox(height: 24),
+              Text("Loading your profile...", style: TextStyle(color: Colors.grey)),
             ],
           ),
         ),

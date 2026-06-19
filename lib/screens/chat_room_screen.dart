@@ -7,13 +7,17 @@ import '../services/database_service.dart';
 class ChatRoomScreen extends StatefulWidget {
   final String otherUserId;
   final String otherUserName;
-  final String? apartmentId;
+  final String apartmentId;
+  final String landlordId;
+  final String tenantId;
 
   const ChatRoomScreen({
     super.key,
     required this.otherUserId,
     required this.otherUserName,
-    this.apartmentId,
+    required this.apartmentId,
+    required this.landlordId,
+    required this.tenantId,
   });
 
   @override
@@ -23,26 +27,36 @@ class ChatRoomScreen extends StatefulWidget {
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final TextEditingController _messageController = TextEditingController();
   final DatabaseService _db = DatabaseService();
+  late final String _conversationId;
+
+  @override
+  void initState() {
+    super.initState();
+    _conversationId = "${widget.apartmentId}_${widget.tenantId}_${widget.landlordId}";
+  }
 
   void _sendMessage() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    final messageContent = _messageController.text.trim();
+    if (messageContent.isEmpty) return;
 
     final currentUser = Provider.of<UserProvider>(context, listen: false).user;
     if (currentUser == null) return;
 
-    // Create participants list and sort it for consistent querying
     final List<String> participants = [currentUser.uid, widget.otherUserId];
     participants.sort();
 
     final message = MessageModel(
       id: '',
+      conversationId: _conversationId,
       senderId: currentUser.uid,
       receiverId: widget.otherUserId,
-      text: text,
+      senderRole: currentUser.role,
+      text: messageContent,
       timestamp: DateTime.now(),
       participants: participants,
       apartmentId: widget.apartmentId,
+      landlordId: widget.landlordId,
+      tenantId: widget.tenantId,
     );
 
     await _db.sendMessage(message);
@@ -71,8 +85,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         children: [
           Expanded(
             child: StreamBuilder<List<MessageModel>>(
-              stream: _db.getMessages(currentUser?.uid ?? '', widget.otherUserId),
+              stream: _db.getMessages(_conversationId),
               builder: (context, snapshot) {
+                if (snapshot.hasData && currentUser != null) {
+                  _db.markMessagesAsRead(_conversationId, currentUser.uid);
+                }
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }

@@ -39,9 +39,6 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
 
           await DatabaseService().updateUserLocation(user.uid, location);
           
-          // Refresh user data in provider
-          // (Assuming there's a method to refresh or the listener handles it)
-          
           if (mounted) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const LandlordDashboard()),
@@ -51,7 +48,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error saving location: $e')),
+            SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating),
           );
         }
       } finally {
@@ -62,14 +59,11 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Set Up Location', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        title: const Text('Account Setup', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
@@ -80,78 +74,53 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Provide your general location',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Text(
+                    'Landlord Location',
+                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'This helps tenants find your properties by area. We don\'t share your exact address for privacy.',
-                    style: TextStyle(color: Colors.grey),
+                  Text(
+                    'Provide your general service area. This helps tenants find your properties easily.',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
-                  const SizedBox(height: 30),
-                  _buildTextField(_provinceController, 'Province', 'e.g. Davao del Sur'),
-                  _buildTextField(_cityController, 'City / Municipality', 'e.g. Davao City'),
-                  _buildTextField(_barangayController, 'Barangay', 'e.g. Bucana'),
-                  _buildTextField(_streetController, 'Street Address (Optional)', 'e.g. San Pedro St.', isOptional: true),
-                  _buildTextField(_landmarkController, 'Landmark (Optional)', 'e.g. Near City Hall', isOptional: true),
-                  const SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _saveLocation,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E88E5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text(
-                        'Continue to Dashboard',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
+                  const SizedBox(height: 32),
+                  TextFormField(
+                    controller: _provinceController,
+                    decoration: const InputDecoration(labelText: 'Province', prefixIcon: Icon(Icons.map_outlined)),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
                   ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _cityController,
+                    decoration: const InputDecoration(labelText: 'City / Municipality', prefixIcon: Icon(Icons.location_city_outlined)),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _barangayController,
+                    decoration: const InputDecoration(labelText: 'Barangay', prefixIcon: Icon(Icons.place_outlined)),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _streetController,
+                    decoration: const InputDecoration(labelText: 'Street Address (Optional)', prefixIcon: Icon(Icons.home_outlined)),
+                  ),
+                  const SizedBox(height: 20),
+                   TextFormField(
+                    controller: _landmarkController,
+                    decoration: const InputDecoration(labelText: 'Nearby Landmark (Optional)', prefixIcon: Icon(Icons.near_me_outlined)),
+                  ),
+                  const SizedBox(height: 48),
+                  ElevatedButton(
+                    onPressed: _saveLocation,
+                    child: const Text('Complete Setup'),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController controller, String label, String hint, {bool isOptional = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: controller,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: Colors.grey[400]),
-              filled: true,
-              fillColor: Colors.grey[50],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[200]!),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[200]!),
-              ),
-            ),
-            validator: (value) {
-              if (!isOptional && (value == null || value.trim().isEmpty)) {
-                return 'This field is required';
-              }
-              return null;
-            },
-          ),
-        ],
-      ),
     );
   }
 }

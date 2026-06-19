@@ -16,6 +16,10 @@ class _LandlordDashboardState extends State<LandlordDashboard> {
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
+    if (_selectedIndex == index && index == 0) {
+      // If tapping the home tab while already on it, we could trigger a refresh
+      // but since it's using streams, it should be fine.
+    }
     setState(() {
       _selectedIndex = index;
     });

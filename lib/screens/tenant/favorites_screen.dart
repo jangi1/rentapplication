@@ -118,7 +118,7 @@ class FavoritesScreen extends StatelessWidget {
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          apt.location.toString(), 
+                          apt.location.toString(),
                           style: const TextStyle(color: Colors.grey, fontSize: 12),
                           overflow: TextOverflow.ellipsis,
                         ),

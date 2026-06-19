@@ -25,14 +25,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   final _bathroomsController = TextEditingController();
   final _floorAreaController = TextEditingController();
   
-  // Location Controllers
   final _provinceController = TextEditingController();
   final _cityController = TextEditingController();
   final _barangayController = TextEditingController();
   final _streetController = TextEditingController();
   final _landmarkController = TextEditingController();
 
-  final String _availability = 'Available';
   bool _isFurnished = false;
   bool _hasParking = false;
   bool _isPetFriendly = false;
@@ -40,10 +38,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   final List<String> _selectedAmenities = [];
   final List<String> _amenityOptions = [
     'Wi-Fi', 'Parking', 'Air Conditioning', 'Balcony', 
-    'Kitchen', 'Security', 'Laundry Area'
+    'Kitchen', 'Security', 'Laundry Area', 'CCTV', 'Swimming Pool', 'Gym'
   ];
 
-  List<File> _images = [];
+  final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
 
@@ -51,138 +49,212 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     final List<XFile> selectedImages = await _picker.pickMultiImage();
     if (selectedImages.isNotEmpty) {
       setState(() {
-        _images = selectedImages.map((xFile) => File(xFile.path)).toList();
+        _images.addAll(selectedImages.map((xFile) => File(xFile.path)));
       });
     }
   }
 
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
+  }
+
   void _saveApartment() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      final user = Provider.of<UserProvider>(context, listen: false).user;
-      
-      ApartmentModel newApt = ApartmentModel(
-        id: '',
-        landlordId: user!.uid,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        price: double.parse(_priceController.text.trim()),
-        propertyType: _propertyTypeController.text.trim(),
-        bedrooms: int.parse(_bedroomsController.text.trim()),
-        bathrooms: int.parse(_bathroomsController.text.trim()),
-        floorArea: double.parse(_floorAreaController.text.trim()),
-        amenities: _selectedAmenities,
-        imageUrls: [],
-        status: _availability,
-        createdAt: DateTime.now(),
-        location: LocationModel(
-          province: _provinceController.text.trim(),
-          cityMunicipality: _cityController.text.trim(),
-          barangay: _barangayController.text.trim(),
-          streetAddress: _streetController.text.trim().isEmpty ? null : _streetController.text.trim(),
-          landmark: _landmarkController.text.trim().isEmpty ? null : _landmarkController.text.trim(),
-        ),
-        isFurnished: _isFurnished,
-        hasParking: _hasParking,
-        isPetFriendly: _isPetFriendly,
-        contactNumber: user.contactNumber,
-      );
+      if (_images.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please add at least one image.'), behavior: SnackBarBehavior.floating),
+        );
+        return;
+      }
 
-      await DatabaseService().addApartment(newApt, _images);
-      
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listing published successfully!')));
-        if (widget.onSuccess != null) {
-          widget.onSuccess!();
-          // Reset form
-          _titleController.clear();
-          _descriptionController.clear();
-          _priceController.clear();
-          _bedroomsController.clear();
-          _bathroomsController.clear();
-          _floorAreaController.clear();
-          _provinceController.clear();
-          _cityController.clear();
-          _barangayController.clear();
-          _streetController.clear();
-          _landmarkController.clear();
-          setState(() {
-            _images = [];
-            _selectedAmenities.clear();
-          });
-        } else {
-          Navigator.pop(context);
+      setState(() => _isLoading = true);
+      try {
+        final user = Provider.of<UserProvider>(context, listen: false).user;
+        
+        ApartmentModel newApt = ApartmentModel(
+          id: '',
+          landlordId: user!.uid,
+          landlordName: user.fullName,
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          price: double.parse(_priceController.text.trim()),
+          propertyType: _propertyTypeController.text.trim(),
+          bedrooms: int.parse(_bedroomsController.text.trim()),
+          bathrooms: int.parse(_bathroomsController.text.trim()),
+          floorArea: double.parse(_floorAreaController.text.trim()),
+          amenities: _selectedAmenities,
+          imageUrls: [],
+          status: 'Available',
+          createdAt: DateTime.now(),
+          location: LocationModel(
+            province: _provinceController.text.trim(),
+            cityMunicipality: _cityController.text.trim(),
+            barangay: _barangayController.text.trim(),
+            streetAddress: _streetController.text.trim().isEmpty ? null : _streetController.text.trim(),
+            landmark: _landmarkController.text.trim().isEmpty ? null : _landmarkController.text.trim(),
+          ),
+          isFurnished: _isFurnished,
+          hasParking: _hasParking,
+          isPetFriendly: _isPetFriendly,
+          contactNumber: user.contactNumber,
+        );
+
+        await DatabaseService().addApartment(newApt, _images);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Property listed successfully!'), behavior: SnackBarBehavior.floating));
+          if (widget.onSuccess != null) {
+            widget.onSuccess!();
+          } else {
+            Navigator.pop(context);
+          }
         }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating));
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: widget.onSuccess != null ? null : IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Add New Listing', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        title: const Text('List New Property', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.all(24),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionHeader(Icons.info_outline, 'Basic Details'),
-                  _buildTextField(_titleController, 'Title', '2BR Apartment in Ecoland'),
-                  _buildTextField(_priceController, 'Monthly Rent', '12000', keyboardType: TextInputType.number),
-                  _buildTextField(_descriptionController, 'Description', 'Describe your property...', maxLines: 3),
+                  _buildSectionTitle('Property Images', theme),
+                  const SizedBox(height: 16),
+                  _buildImagePicker(theme),
+                  const SizedBox(height: 32),
                   
-                  _buildSectionHeader(Icons.location_on_outlined, 'Location'),
-                  _buildTextField(_provinceController, 'Province', 'Davao del Sur'),
-                  _buildTextField(_cityController, 'City/Municipality', 'Davao City'),
-                  _buildTextField(_barangayController, 'Barangay', 'Ecoland'),
-                  _buildTextField(_streetController, 'Street Address (Optional)', 'Street name, House #'),
-                  
-                  _buildSectionHeader(Icons.home_work_outlined, 'Property Specs'),
+                  _buildSectionTitle('Basic Information', theme),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(labelText: 'Listing Title', hintText: 'e.g. Modern Studio Apartment'),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _descriptionController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(labelText: 'Description', hintText: 'Tell tenants about your property...'),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 20),
                   Row(
                     children: [
-                      Expanded(child: _buildTextField(_bedroomsController, 'Bedrooms', '2', keyboardType: TextInputType.number)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _buildTextField(_bathroomsController, 'Bathrooms', '1', keyboardType: TextInputType.number)),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _priceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Price / Month', prefixText: '₱ '),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _propertyTypeController,
+                          decoration: const InputDecoration(labelText: 'Property Type'),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
                     ],
                   ),
-                  _buildTextField(_floorAreaController, 'Floor Area (sqm)', '60', keyboardType: TextInputType.number),
-                  _buildTextField(_propertyTypeController, 'Property Type', 'Apartment'),
-
-                  _buildSectionHeader(Icons.featured_play_list_outlined, 'Features'),
-                  SwitchListTile(
-                    title: const Text('Furnished'),
-                    value: _isFurnished,
-                    onChanged: (val) => setState(() => _isFurnished = val),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Location', theme),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _provinceController,
+                          decoration: const InputDecoration(labelText: 'Province'),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _cityController,
+                          decoration: const InputDecoration(labelText: 'City'),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                    ],
                   ),
-                  SwitchListTile(
-                    title: const Text('Parking Available'),
-                    value: _hasParking,
-                    onChanged: (val) => setState(() => _hasParking = val),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _barangayController,
+                    decoration: const InputDecoration(labelText: 'Barangay'),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
                   ),
-                  SwitchListTile(
-                    title: const Text('Pet-Friendly'),
-                    value: _isPetFriendly,
-                    onChanged: (val) => setState(() => _isPetFriendly = val),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _streetController,
+                    decoration: const InputDecoration(labelText: 'Street Address (Optional)'),
                   ),
-
-                  _buildSectionHeader(Icons.star_outline, 'Amenities'),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Specifications', theme),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _bedroomsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Bedrooms', prefixIcon: Icon(Icons.king_bed_outlined)),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _bathroomsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Bathrooms', prefixIcon: Icon(Icons.bathtub_outlined)),
+                          validator: (val) => val!.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _floorAreaController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Floor Area (sqm)', prefixIcon: Icon(Icons.square_foot_outlined)),
+                    validator: (val) => val!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Features & Amenities', theme),
+                  const SizedBox(height: 16),
+                  _buildFeatureSwitch('Furnished', _isFurnished, (v) => setState(() => _isFurnished = v)),
+                  _buildFeatureSwitch('Parking Available', _hasParking, (v) => setState(() => _hasParking = v)),
+                  _buildFeatureSwitch('Pet-Friendly', _isPetFriendly, (v) => setState(() => _isPetFriendly = v)),
+                  const SizedBox(height: 16),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 8,
                     children: _amenityOptions.map((amenity) {
                       final isSelected = _selectedAmenities.contains(amenity);
                       return FilterChip(
@@ -200,44 +272,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       );
                     }).toList(),
                   ),
-
-                  const SizedBox(height: 20),
-                  _buildSectionHeader(Icons.image_outlined, 'Photos'),
-                  if (_images.isEmpty)
-                    GestureDetector(
-                      onTap: _pickImages,
-                      child: Container(
-                        height: 120,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: const Icon(Icons.add_a_photo, size: 40, color: Colors.blue),
-                      ),
-                    )
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _images.map((file) => Image.file(file, width: 80, height: 80, fit: BoxFit.cover)).toList(),
-                    ),
-
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E88E5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: _saveApartment,
-                      child: const Text('Publish Listing', style: TextStyle(color: Colors.white, fontSize: 18)),
-                    ),
+                  const SizedBox(height: 48),
+                  ElevatedButton(
+                    onPressed: _saveApartment,
+                    child: const Text('Publish Listing'),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 48),
                 ],
               ),
             ),
@@ -245,33 +285,100 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     );
   }
 
-  Widget _buildSectionHeader(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blue[800]),
-          const SizedBox(width: 10),
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ],
-      ),
+  Widget _buildSectionTitle(String title, ThemeData theme) {
+    return Text(
+      title,
+      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, String hint, {TextInputType keyboardType = TextInputType.text, int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-      ),
+  Widget _buildImagePicker(ThemeData theme) {
+    return Column(
+      children: [
+        if (_images.isNotEmpty)
+          SizedBox(
+            height: 120,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _images.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _images.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: InkWell(
+                      onTap: _pickImages,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Icon(Icons.add_a_photo_outlined, color: theme.colorScheme.primary),
+                      ),
+                    ),
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.file(_images[index], width: 120, height: 120, fit: BoxFit.cover),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => _removeImage(index),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          )
+        else
+          InkWell(
+            onTap: _pickImages,
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
+              height: 160,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cloud_upload_outlined, size: 48, color: theme.colorScheme.primary),
+                  const SizedBox(height: 12),
+                  Text('Upload Property Photos', style: theme.textTheme.titleSmall),
+                  Text('Add at least 1 clear photo', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureSwitch(String label, bool value, Function(bool) onChanged) {
+    return SwitchListTile(
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      value: value,
+      onChanged: onChanged,
+      contentPadding: EdgeInsets.zero,
     );
   }
 }
